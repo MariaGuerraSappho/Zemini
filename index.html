@@ -1,0 +1,215 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zemini - Archive </title>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "@rnbo/js": "https://cdn.jsdelivr.net/npm/@rnbo/js@1.2.3/dist/index.mjs"
+        }
+    }
+    </script>
+    <script type="module" src="script.js"></script>
+
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Zemini - Archive </h1>
+           <h2> Maria Sappho </h2>
+            <div id="loadingOverlay" class="loading-overlay">
+                <div class="loading-spinner"></div>
+                <p id="loadingStatus">Initializing...</p>
+                <button id="startAppBtn" class="start-btn" style="display: none;">Start App</button>
+            </div>
+            <div class="mode-toggle">
+                <button id="recordModeBtn" class="mode-btn active">RECORD</button>
+                <button id="performModeBtn" class="mode-btn">PERFORM</button>
+            </div>
+            <button id="connectBtn" class="connect-btn">Connect Arduino</button>
+        </header>
+
+        <div class="connection-status" id="connectionStatus">
+            <span id="statusText">Disconnected</span>
+            <div class="sensor-values">
+                <span>Avg Pressure: <span id="pressureValue">0</span></span>
+                <span>Center X: <span id="xValue">0</span></span>
+                <span>Center Y: <span id="yValue">0</span></span>
+                <span>Status: <span id="dataStatus">No Data</span></span>
+            </div>
+        </div>
+
+        <div class="sensitivity-control">
+            <label for="sensitivitySlider">Mat Sensitivity:</label>
+            <input type="range" id="sensitivitySlider" class="sensitivity-slider" min="5" max="100" value="25" step="1">
+            <span id="sensitivityValue">25</span>
+            <span class="sensitivity-label">Higher = More Sensitive</span>
+        </div>
+
+        <!-- RECORD MODE -->
+        <div id="recordMode" class="mode-section active">
+            <div class="record-controls">
+                <select id="microphoneSelect" class="mic-select">
+                    <option value="">Select Microphone</option>
+                </select>
+                <div class="volume-meter-container">
+                    <label for="volumeMeter">Microphone Level:</label>
+                    <div class="volume-meter">
+                        <div class="volume-bar" id="volumeBar"></div>
+                    </div>
+                </div>
+                <button id="recordBtn" class="record-btn">Press mat to start recording</button>
+            </div>
+            
+            <div class="samples-list">
+                <h3>Recorded Samples</h3>
+                <div id="samplesContainer" class="samples-container">
+                    <p class="no-samples">No samples recorded yet</p>
+                </div>
+                <button id="clearSamplesBtn" class="clear-btn">Clear All Samples</button>
+            </div>
+        </div>
+
+        <!-- PERFORM MODE -->
+        <div id="performMode" class="mode-section">
+            <div class="perform-controls">
+                <button id="performRecordBtn" class="perform-record-btn">Start Performance Recording</button>
+                <button id="downloadBtn" class="download-btn" disabled>Download Performance</button>
+                <button id="effectsToggleBtn" class="effects-toggle-btn active">Effects: ON</button>
+            </div>
+
+            <div class="effects-toolbar">
+                <h3>Available Effects (Drag onto samples)</h3>
+                <div class="effects-list">
+                    <div class="effect-item" draggable="true" data-effect="pitchshifter">
+                        <div class="effect-name">Pitch Shifter</div>
+                        <div class="effect-icon">🎵</div>
+                    </div>
+                    <div class="effect-item" draggable="true" data-effect="ringmod">
+                        <div class="effect-name">Ring Mod</div>
+                        <div class="effect-icon">💍</div>
+                    </div>
+                    <div class="effect-item" draggable="true" data-effect="freezer">
+                        <div class="effect-name">Freezer</div>
+                        <div class="effect-icon">❄️</div>
+                    </div>
+                    <div class="effect-item" draggable="true" data-effect="vibrato">
+                        <div class="effect-name">Vibrato</div>
+                        <div class="effect-icon">〰️</div>
+                    </div>
+                    <div class="effect-item" draggable="true" data-effect="filterdelay">
+                        <div class="effect-name">Filter Delay</div>
+                        <div class="effect-icon">📻</div>
+                    </div>
+                    <div class="effect-item" draggable="true" data-effect="octaver">
+                        <div class="effect-name">Octaver</div>
+                        <div class="effect-icon">🎚️</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-container">
+                <div class="grid-labels">
+                    <div class="grid-label">Effects</div>
+                    <div class="grid-label">Samples</div>
+                </div>
+                <div class="grid" id="performGrid">
+                    <div class="grid-cell sample-effect-cell" data-index="0" data-sample="0" data-effect="pitchshifter">
+                        <div class="cell-content">
+                            <div class="cell-title">Sample 1</div>
+                            <div class="cell-effect">Pitch Shifter</div>
+                            <div class="cell-status"></div>
+                        </div>
+                    </div>
+                    <div class="grid-cell sample-effect-cell" data-index="1" data-sample="0" data-effect="ringmod">
+                        <div class="cell-content">
+                            <div class="cell-title">Sample 1</div>
+                            <div class="cell-effect">Ring Mod</div>
+                            <div class="cell-status"></div>
+                        </div>
+                    </div>
+                    <div class="grid-cell sample-effect-cell" data-index="2" data-sample="0" data-effect="freezer">
+                        <div class="cell-content">
+                            <div class="cell-title">Sample 1</div>
+                            <div class="cell-effect">Freezer</div>
+                            <div class="cell-status"></div>
+                        </div>
+                    </div>
+                    <div class="grid-cell sample-effect-cell" data-index="3" data-sample="1" data-effect="vibrato">
+                        <div class="cell-content">
+                            <div class="cell-title">Sample 2</div>
+                            <div class="cell-effect">Vibrato</div>
+                            <div class="cell-status"></div>
+                        </div>
+                    </div>
+                    <div class="grid-cell sample-effect-cell" data-index="4" data-sample="1" data-effect="filterdelay">
+                        <div class="cell-content">
+                            <div class="cell-title">Sample 2</div>
+                            <div class="cell-effect">Filter Delay</div>
+                            <div class="cell-status"></div>
+                        </div>
+                    </div>
+                    <div class="grid-cell sample-effect-cell" data-index="5" data-sample="1" data-effect="octaver">
+                        <div class="cell-content">
+                            <div class="cell-title">Sample 2</div>
+                            <div class="cell-effect">Octaver</div>
+                            <div class="cell-status"></div>
+                        </div>
+                    </div>
+                    <div class="grid-cell sample-effect-cell" data-index="6" data-sample="2" data-effect="pitchshifter">
+                        <div class="cell-content">
+                            <div class="cell-title">Sample 3</div>
+                            <div class="cell-effect">Pitch Shifter</div>
+                            <div class="cell-status"></div>
+                        </div>
+                    </div>
+                    <div class="grid-cell sample-effect-cell" data-index="7" data-sample="2" data-effect="ringmod">
+                        <div class="cell-content">
+                            <div class="cell-title">Sample 3</div>
+                            <div class="cell-effect">Ring Mod</div>
+                            <div class="cell-status"></div>
+                        </div>
+                    </div>
+                    <div class="grid-cell sample-effect-cell" data-index="8" data-sample="2" data-effect="freezer">
+                        <div class="cell-content">
+                            <div class="cell-title">Sample 3</div>
+                            <div class="cell-effect">Freezer</div>
+                            <div class="cell-status"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-info">
+            <button id="debugToggle" class="debug-toggle">Show Debug</button>
+            <button id="effectsDebugToggle" class="debug-toggle">Show Effects Debug</button>
+            <button id="effectsControlToggle" class="debug-toggle">Effect Controls</button>
+            <div id="debugPanel" class="debug-panel active">
+                <div id="debugLog"></div>
+            </div>
+            <div id="effectsDebugPanel" class="effects-debug-panel">
+                <div class="effects-debug-header">
+                    <h3>Effects Debug Status</h3>
+                    <button id="refreshEffectsDebug" class="refresh-btn">Refresh</button>
+                </div>
+                <div id="effectsDebugContent" class="effects-debug-content"></div>
+            </div>
+            <div id="effectsControlPanel" class="effects-control-panel">
+                <div class="effects-control-header">
+                    <h3>Effect Parameters</h3>
+                    <button id="resetEffectsBtn" class="refresh-btn">Reset All</button>
+                </div>
+                <div id="effectsControlContent" class="effects-control-content">
+                    <!-- Effect controls will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
