@@ -22,6 +22,7 @@ class AudioRugApp {
         this.recordingState = 'idle'; // 'idle', 'recording'
         this.isRecordingOnCooldown = false;
         this.recordingCooldownMs = 1500; // 1.5 seconds between recording actions
+        this.recordingReady = false; // Start NOT ready - require mat to be unpressed first
         
         // --- Configurable Sensitivity ---
         this.pressureThreshold = 25; // Single configurable threshold for both modes
@@ -150,7 +151,7 @@ class AudioRugApp {
         this.debugPanel.classList.remove('active'); // Start with debug panel closed
         
         // Set initial record button text
-        this.recordBtn.textContent = 'Press mat to start recording';
+        this.recordBtn.textContent = 'Press to record';
     }
 
     updateLoadingStatus(message, isError = false) {
@@ -596,13 +597,14 @@ class AudioRugApp {
         // Reset recording state machine
         this.recordingState = 'idle';
         this.isRecordingOnCooldown = false;
+        this.recordingReady = true; // Allow immediate recording when entering RECORD mode
         
         // Clear all active effects and samples when switching modes
         this.clearAllActiveEffectsAndSamples();
         
         // Reset record button state when switching modes
         if (mode === 'RECORD') {
-            this.recordBtn.textContent = 'Press mat to start recording';
+            this.recordBtn.textContent = 'Press to record';
             this.recordBtn.classList.remove('recording');
             this.recordBtn.style.background = '#2a2a2a';
             this.recordBtn.style.borderColor = '#444';
@@ -742,12 +744,18 @@ class AudioRugApp {
 
         // Debug output to help diagnose mat recording issues
         if (Math.abs(totalPressure - this.lastTotalPressure) > 10) {
-            this.debug(`Mat pressure: ${totalPressure}, threshold: ${this.pressureThreshold}, isPressed: ${isPressed}, lastState: ${this.lastPressureState}, recordingState: ${this.recordingState}`);
+            this.debug(`Mat pressure: ${totalPressure}, threshold: ${this.pressureThreshold}, isPressed: ${isPressed}, lastState: ${this.lastPressureState}, recordingState: ${this.recordingState}, ready: ${this.recordingReady}`);
             this.lastTotalPressure = totalPressure;
         }
 
-        // Visual feedback for potential press
-        if (isPressed && this.recordingState === 'idle' && !this.isRecordingOnCooldown) {
+        // Wait for mat to be unpressed before we're ready to detect presses
+        if (!this.recordingReady && !isPressed) {
+            this.recordingReady = true;
+            this.debug('Recording ready - mat is unpressed, waiting for press...');
+        }
+
+        // Visual feedback for potential press (only if ready)
+        if (isPressed && this.recordingState === 'idle' && !this.isRecordingOnCooldown && this.recordingReady) {
             this.recordBtn.style.background = '#444';
             this.recordBtn.style.color = '#ffa500';
         } else if (!isPressed && this.recordingState === 'idle' && !this.isRecordingOnCooldown) {
@@ -756,7 +764,8 @@ class AudioRugApp {
         }
 
         // Detect rising edge (pressure going from below to above threshold) to toggle recording
-        if (isPressed && !this.lastPressureState) {
+        // Only trigger if we're ready (have seen an unpressed state)
+        if (isPressed && !this.lastPressureState && this.recordingReady) {
             // This is a rising edge - toggle recording state
             if (this.recordingState === 'idle' && !this.isRecordingOnCooldown) {
                 this.debug('🎤 Mat press detected, starting recording...');
@@ -767,7 +776,7 @@ class AudioRugApp {
             }
         }
 
-        // Update last pressure state to match the recording threshold logic
+        // Update last pressure state
         this.lastPressureState = isPressed;
     }
 
@@ -965,7 +974,7 @@ class AudioRugApp {
             this.debug('🎤 Starting recording with device:', deviceId);
             await this.audioEngine.startRecording(deviceId);
             
-            this.recordBtn.textContent = '🔴 Recording... (press mat to stop)';
+            this.recordBtn.textContent = '🔴 Recording... (press to stop)';
             this.recordBtn.classList.add('recording');
             this.recordBtn.style.background = '#404040';
             this.recordBtn.style.borderColor = '#666';
@@ -984,7 +993,7 @@ class AudioRugApp {
             // Reset button after 3 seconds
             setTimeout(() => {
                 if (this.recordingState !== 'recording') { // Don't reset if another recording started
-                    this.recordBtn.textContent = 'Press mat to start recording';
+                    this.recordBtn.textContent = 'Press to record';
                     this.recordBtn.style.background = '#2a2a2a';
                     this.recordBtn.style.borderColor = '#444';
                     this.recordBtn.style.color = '#e0e0e0';
@@ -1004,6 +1013,7 @@ class AudioRugApp {
         // Set state to idle and start cooldown to prevent re-triggers
         this.recordingState = 'idle';
         this.isRecordingOnCooldown = true;
+        this.recordingReady = false; // Reset ready state to require unpressed before next recording
         
         try {
             this.debug('⏹️ Stopping recording...');
@@ -1078,7 +1088,7 @@ class AudioRugApp {
             setTimeout(() => {
                 this.isRecordingOnCooldown = false;
                 if (this.recordingState === 'idle') { // Only reset text if we are still idle
-                    this.recordBtn.textContent = 'Press mat to start recording';
+                    this.recordBtn.textContent = 'Press to record';
                     this.recordBtn.style.background = '#2a2a2a';
                     this.recordBtn.style.borderColor = '#444';
                     this.recordBtn.style.color = '#e0e0e0';
